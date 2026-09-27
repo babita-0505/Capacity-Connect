@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cc_db
+    restart: always
+    environment:
+      POSTGRES_DB: capacity_connect
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/seed_demo.sql:/docker-entrypoint-initdb.d/02_seed_demo.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d capacity_connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: cc_api
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@db:5432/capacity_connect
+      JWT_SECRET: hackathon_jwt_secret_key_sih2026_imd_moes_lean_v2
+      CERT_HMAC_SECRET: hackathon_cert_hmac_secret_key_sih2026_imd
+      UPLOAD_DIR: /data/uploads
+      LLM_API_KEY: ""
+      PORT: 8000
+    volumes:
+      - uploads_data:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: cc_web
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: cc_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - uploads_data:/data/uploads:ro
+    depends_on:
+      - api
+      - web
+
+volumes:
+  postgres_data:
+  uploads_data:
