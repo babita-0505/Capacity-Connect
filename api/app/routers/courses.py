@@ -12,6 +12,45 @@ from app.schemas.courses import (
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
+@router.get("/my/enrollments")
+async def get_my_enrollments(
+    current_user: dict = Depends(require_role("trainee")),
+    db: AsyncSession = Depends(get_db)
+):
+    rows = await db.execute(text("""
+        SELECT e.id AS enrollment_id, e.course_id, e.status, e.progress_pct,
+               e.completed_resource_ids, e.enrolled_at, e.completed_at, e.last_activity_at,
+               c.code, c.title, c.summary, c.level, c.duration_hours, c.issues_certificate,
+               s.name AS skill_name, u.full_name AS trainer_name,
+               (SELECT cert.certificate_no FROM certificates cert WHERE cert.enrollment_id = e.id) AS certificate_no,
+               (SELECT a.id FROM assessments a WHERE a.course_id = c.id AND a.status = 'open' LIMIT 1) AS assessment_id
+        FROM enrollments e
+        JOIN courses c ON c.id = e.course_id
+        LEFT JOIN skills s ON s.id = c.skill_id
+        LEFT JOIN users u ON u.id = c.trainer_id
+        WHERE e.user_id = :uid
+        ORDER BY e.last_activity_at DESC NULLS LAST, e.enrolled_at DESC
+    """), {"uid": current_user["id"]})
+    return {"items": [dict(r) for r in rows.mappings().all()]}
+
+@router.get("/{course_id}/enrollment")
+async def get_course_enrollment(
+    course_id: uuid.UUID,
+    current_user: dict = Depends(require_role("trainee")),
+    db: AsyncSession = Depends(get_db)
+):
+    row = (await db.execute(text("""
+        SELECT e.id, e.course_id, e.status, e.progress_pct, e.completed_resource_ids,
+               e.enrolled_at, e.completed_at, e.last_activity_at,
+               (SELECT cert.certificate_no FROM certificates cert WHERE cert.enrollment_id = e.id) AS certificate_no,
+               (SELECT a.id FROM assessments a WHERE a.course_id = :cid AND a.status = 'open' LIMIT 1) AS assessment_id
+        FROM enrollments e
+        WHERE e.course_id = :cid AND e.user_id = :uid
+    """), {"cid": course_id, "uid": current_user["id"]})).mappings().first()
+    if not row:
+        return {"enrolled": False, "enrollment": None}
+    return {"enrolled": True, "enrollment": dict(row)}
+
 @router.post("/{course_id}/enroll", status_code=status.HTTP_201_CREATED)
 async def enroll_course(
     course_id: uuid.UUID,
@@ -43,12 +82,41 @@ async def complete_resource(
     if not valid:
         raise HTTPException(422, "Resource is not part of this course")
     mandatory = (await db.execute(text("SELECT count(*) FROM course_resources WHERE course_id=:course AND is_mandatory"), {"course": enrollment["course_id"]})).scalar() or 0
-    completed = (await db.execute(text("SELECT count(*) FROM course_resources WHERE course_id=:course AND is_mandatory AND resource_id = ANY(:resources)"), {"course": enrollment["course_id"], "resources": list(set((enrollment["completed_resource_ids"] or []) + [resource_id]) )})).scalar() or 0
-    progress = round(100 * completed / mandatory, 2) if mandatory else 100
+    completed = (await db.execute(text("SELECT count(*) FROM course_resources WHERE course_id=:course AND is_mandatory AND resource_id = ANY(:resources)"), {"course": enrollment["course_id"], "resources": list(set((enrollment["completed_resource_ids"] or []) + [resource_id]))})).scalar() or 0
+    progress = round(100.0 * completed / mandatory, 2) if mandatory else 100.0
+
     await db.execute(text("""UPDATE enrollments SET
         completed_resource_ids=CASE WHEN :resource = ANY(completed_resource_ids) THEN completed_resource_ids ELSE array_append(completed_resource_ids,:resource) END,
-        progress_pct=:progress, status=CASE WHEN :progress > 0 THEN 'in_progress'::enrollment_status ELSE status END,
+        progress_pct=:progress, status=CASE WHEN :progress > 0 AND status='enrolled' THEN 'in_progress'::enrollment_status ELSE status END,
         last_activity_at=now() WHERE id=:id"""), {"resource": resource_id, "progress": progress, "id": enrollment_id})
+
+    # Check if completion condition satisfied
+    if progress >= 100.0:
+        course_test = (await db.execute(text("""
+            SELECT id, pass_pct FROM assessments WHERE course_id = :cid AND status = 'open'
+        """), {"cid": enrollment["course_id"]})).mappings().first()
+
+        can_complete = True
+        if course_test:
+            passed_test = (await db.execute(text("""
+                SELECT 1 FROM attempts WHERE assessment_id = :aid AND user_id = :uid AND passed = true
+            """), {"aid": course_test["id"], "uid": current_user["id"]})).first()
+            if not passed_test:
+                can_complete = False
+
+        if can_complete:
+            await db.execute(text("""
+                UPDATE enrollments SET status = 'completed', completed_at = now() WHERE id = :id
+            """), {"id": enrollment_id})
+
+            course_row = (await db.execute(text("SELECT issues_certificate FROM courses WHERE id=:id"), {"id": enrollment["course_id"]})).mappings().first()
+            if course_row and course_row["issues_certificate"]:
+                await db.execute(text("""
+                    INSERT INTO jobs(type, payload, dedupe_key)
+                    VALUES('certificate_issue', json_build_object('enrollment_id', :eid), :key)
+                    ON CONFLICT DO NOTHING
+                """), {"eid": str(enrollment_id), "key": f"cert:{enrollment_id}"})
+
     await db.commit()
     return {"id": enrollment_id, "progress_pct": progress, "completed_resources": completed, "mandatory_resources": mandatory}
 

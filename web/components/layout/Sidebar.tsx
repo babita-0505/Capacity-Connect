@@ -36,24 +36,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ user }) => {
     ];
 
     if (user.role === "trainer") {
-      links.splice(1, 0, {
-        href: "/trainer/courses",
-        label: "My Courses & Content",
-        icon: BookOpen,
-      });
-      links.splice(2, 0, { href: "/trainer/questions", label: "Question Generator", icon: HelpCircle });
+      return [
+        { href: "/trainer/courses", label: "My Courses & Content", icon: BookOpen },
+        { href: "/trainer/questions", label: "Question Bank", icon: HelpCircle },
+        { href: "/trainer/assessments", label: "Assessments & Tests", icon: Award },
+        { href: "/courses", label: "Course Catalogue", icon: Compass },
+        { href: "/profile", label: "My Profile", icon: UserIcon },
+      ];
     }
 
     if (user.role === "admin") {
-      links.splice(1, 0, {
-        href: "/admin/users",
-        label: "User Approvals",
-        icon: UserCheck,
-      });
-      links.splice(2, 0, { href: "/admin/competency", label: "Competency Mapping", icon: BrainCircuit });
+      return [
+        { href: "/admin", label: "Admin Dashboard", icon: BarChart3 },
+        { href: "/admin/users", label: "User Approvals", icon: UserCheck },
+        { href: "/admin/competency", label: "Competency Mapping", icon: BrainCircuit },
+        { href: "/courses", label: "Course Catalogue", icon: Compass },
+        { href: "/profile", label: "My Profile", icon: UserIcon },
+      ];
     }
 
-    return links;
+    // Trainee
+    return [
+      { href: "/trainee", label: "My Workspace", icon: BookOpen },
+      { href: "/courses", label: "Course Catalogue", icon: Compass },
+      { href: "/assessments", label: "My Assessments", icon: Award },
+      { href: "/trainee/skills", label: "My Competencies", icon: BrainCircuit },
+      { href: "/profile", label: "My Profile", icon: UserIcon },
+    ];
   };
 
   const navLinks = getNavLinks();

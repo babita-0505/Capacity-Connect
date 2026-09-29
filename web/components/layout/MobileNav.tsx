@@ -25,13 +25,27 @@ export const MobileNav: React.FC<MobileNavProps> = ({ user }) => {
     }
 
     if (user.role === "trainer") {
-      base.push({ href: "/trainer/courses", label: "Teaching", icon: BookOpen });
+      return [
+        { href: "/trainer/courses", label: "Courses", icon: BookOpen },
+        { href: "/trainer/questions", label: "Questions", icon: Home },
+        { href: "/trainer/assessments", label: "Tests", icon: Compass },
+        { href: "/profile", label: "Profile", icon: UserIcon },
+      ];
     } else if (user.role === "admin") {
-      base.push({ href: "/admin/users", label: "Approvals", icon: UserCheck });
+      return [
+        { href: "/admin", label: "Dashboard", icon: Home },
+        { href: "/admin/users", label: "Users", icon: UserCheck },
+        { href: "/admin/competency", label: "Skills", icon: Compass },
+        { href: "/profile", label: "Profile", icon: UserIcon },
+      ];
     }
 
-    base.push({ href: "/profile", label: "Profile", icon: UserIcon });
-    return base;
+    // Trainee
+    return [
+      { href: "/courses", label: "Courses", icon: Compass },
+      { href: "/assessments", label: "My Tests", icon: BookOpen },
+      { href: "/profile", label: "Profile", icon: UserIcon },
+    ];
   };
 
   const links = getLinks();

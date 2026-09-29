@@ -14,30 +14,58 @@ import {
   ExternalLink,
   BookOpen
 } from "lucide-react";
-import { api, Course, CourseResource } from "@/lib/api";
+import { api, Course, CourseResource, EnrollmentRecord } from "@/lib/api";
+import { useAuth } from "@/components/layout/AppShell";
 
 export default function CourseDetailPage() {
   const params = useParams();
   const courseId = params.id as string;
+  const { user } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
+  const [enrollment, setEnrollment] = useState<EnrollmentRecord | null>(null);
+  const [enrolling, setEnrolling] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeResource, setActiveResource] = useState<CourseResource | null>(null);
 
-  useEffect(() => {
+  const loadData = async () => {
     if (!courseId) return;
-    setLoading(true);
-    api.courses.get(courseId)
-      .then((data) => {
-        setCourse(data);
-        if (data.resources && data.resources.length > 0) {
-          setActiveResource(data.resources[0]);
+    try {
+      setLoading(true);
+      const courseData = await api.courses.get(courseId);
+      setCourse(courseData);
+      if (courseData.resources && courseData.resources.length > 0) {
+        setActiveResource(courseData.resources[0]);
+      }
+      if (user && user.role === "trainee") {
+        const enrollData = await api.courses.getEnrollment(courseId).catch(() => ({ enrolled: false, enrollment: null }));
+        if (enrollData.enrolled) {
+          setEnrollment(enrollData.enrollment);
         }
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [courseId]);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [courseId, user]);
+
+  const handleEnroll = async () => {
+    try {
+      setEnrolling(true);
+      await api.courses.enroll(courseId);
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Failed to enroll in course");
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-12 text-center text-slate-500 text-sm">Loading course details...</div>;
@@ -109,17 +137,58 @@ export default function CourseDetailPage() {
           </p>
         )}
 
-        <div className="pt-2 flex flex-wrap items-center gap-6 text-xs text-slate-500 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 font-medium text-slate-700">
-            <UserIcon className="h-4 w-4 text-slate-400" />
-            <span>Lead Trainer: {course.trainer_name || "Assigned IMD Scientist"}</span>
+        <div className="pt-2 flex flex-wrap items-center justify-between gap-4 text-xs border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-6 text-slate-500">
+            <div className="flex items-center gap-1.5 font-medium text-slate-700">
+              <UserIcon className="h-4 w-4 text-slate-400" />
+              <span>Lead Trainer: {course.trainer_name || "Assigned IMD Scientist"}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-slate-400" />
+              <span>Est. Duration: {course.duration_hours || 4} Hours</span>
+            </div>
+            <div>
+              <span>Pass Threshold: {course.pass_criteria_pct}%</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4 text-slate-400" />
-            <span>Est. Duration: {course.duration_hours || 4} Hours</span>
-          </div>
+
           <div>
-            <span>Pass Threshold: {course.pass_criteria_pct}%</span>
+            {enrollment ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-emerald-700">
+                  {enrollment.progress_pct}% Completed
+                </span>
+                <Link
+                  href={`/courses/${course.id}/learn`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white px-4 py-2 text-xs font-semibold shadow-sm transition-colors"
+                >
+                  <BookOpen className="h-3.5 w-3.5" /> Continue Learning
+                </Link>
+              </div>
+            ) : user && user.role === "trainee" ? (
+              <button
+                onClick={handleEnroll}
+                disabled={enrolling}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white px-4 py-2 text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                {enrolling ? "Enrolling..." : "Enroll in Course"}
+              </button>
+            ) : user ? (
+              <Link
+                href={`/courses/${course.id}/learn`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-navy-900 hover:bg-navy-800 text-white px-4 py-2 text-xs font-semibold shadow-sm transition-colors"
+              >
+                <BookOpen className="h-3.5 w-3.5" /> Open Course Player
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white px-4 py-2 text-xs font-semibold shadow-sm transition-colors"
+              >
+                Login to Enroll
+              </Link>
+            )}
           </div>
         </div>
       </div>

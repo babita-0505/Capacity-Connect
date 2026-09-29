@@ -81,13 +81,193 @@ export interface CourseResource {
   is_mandatory: boolean;
 }
 
-export interface CompetencyRecommendation {
-  trainer_id: string; full_name: string; department?: string; total_score: number;
-  rank_in_skill: number; skill_match: number; pass_rate: number; rating_score: number; experience_score: number;
-  declared_proficiency?: number; courses_taught: number; resources_uploaded: number; keyword_hits: number; attempts_count: number; feedback_count: number;
+export interface EnrollmentRecord {
+  id: string;
+  course_id: string;
+  status: "enrolled" | "in_progress" | "completed" | "dropped";
+  progress_pct: number;
+  completed_resource_ids: string[];
+  enrolled_at: string;
+  completed_at?: string;
+  last_activity_at?: string;
+  certificate_no?: string;
+  assessment_id?: string;
 }
 
-export interface SkillGap { skill_id: number; skill: string; category?: string; best_trainer_score: number; strong_trainers: number; demand: number; gap_status: "critical gap" | "weak coverage" | "covered"; }
+export interface TraineeEnrollmentItem extends EnrollmentRecord {
+  enrollment_id: string;
+  code: string;
+  title: string;
+  summary?: string;
+  level: string;
+  duration_hours?: number;
+  issues_certificate: boolean;
+  skill_name?: string;
+  trainer_name?: string;
+}
+
+export interface QuestionOption {
+  id: string;
+  text: string;
+  is_correct?: boolean;
+  position: number;
+}
+
+export interface QuestionItem {
+  id: string;
+  skill_id: number;
+  skill_name?: string;
+  type: string;
+  text: string;
+  explanation?: string;
+  difficulty: number;
+  status: "draft" | "approved" | "retired";
+  generation_method: "manual" | "llm" | "rule_based";
+  source_page?: number;
+  created_by: string;
+  created_at: string;
+  options: QuestionOption[];
+}
+
+export interface Assessment {
+  id: string;
+  title: string;
+  instructions?: string;
+  type: string;
+  course_id?: string;
+  course_title?: string;
+  skill_id?: number;
+  skill_name?: string;
+  status: "draft" | "open" | "closed";
+  opens_at?: string;
+  deadline_at?: string;
+  duration_minutes?: number;
+  pass_pct: number;
+  max_attempts: number;
+  shuffle_questions: boolean;
+  show_results: boolean;
+  lockdown_enabled: boolean;
+  created_at: string;
+  question_count?: number;
+  completed_attempts?: number;
+  questions?: Array<{
+    id: string;
+    text: string;
+    difficulty: number;
+    position: number;
+    marks: number;
+    options: QuestionOption[];
+  }>;
+}
+
+export interface TraineeAssessmentItem extends Assessment {
+  my_attempts_count: number;
+  last_attempt_id?: string;
+  last_attempt_status?: string;
+  last_percentage?: number;
+  last_passed?: boolean;
+  can_start: boolean;
+}
+
+export interface AttemptStartResponse {
+  attempt_id: string;
+  expires_at: string;
+  duration_minutes?: number;
+  lockdown_enabled: boolean;
+  questions: Array<{
+    id: string;
+    text: string;
+    type: string;
+    difficulty: number;
+    position: number;
+    marks: number;
+    options: Array<{ id: string; text: string; position: number }>;
+  }>;
+  saved_answers: Record<string, string[]>;
+}
+
+export interface AttemptResultResponse {
+  attempt: {
+    id: string;
+    assessment_id: string;
+    user_id: string;
+    attempt_no: number;
+    status: string;
+    started_at: string;
+    submitted_at: string;
+    score: number;
+    max_score: number;
+    percentage: number;
+    passed: boolean;
+    tab_switch_count: number;
+    fullscreen_exits: number;
+    copy_paste_attempts: number;
+    title: string;
+    required_pass_pct: number;
+    course_id?: string;
+    course_title?: string;
+  };
+  answers: Array<{
+    question_id: string;
+    text: string;
+    explanation?: string;
+    is_correct: boolean;
+    marks_awarded: number;
+    selected_option_ids: string[];
+    user_answer?: string;
+    correct_answer?: string;
+  }>;
+}
+
+export interface AssessmentParticipationResponse {
+  stats: Record<string, any>;
+  attempts: Array<{
+    id: string;
+    attempt_no: number;
+    status: string;
+    started_at: string;
+    submitted_at?: string;
+    score?: number;
+    max_score?: number;
+    percentage?: number;
+    passed?: boolean;
+    tab_switch_count: number;
+    fullscreen_exits: number;
+    copy_paste_attempts: number;
+    user_id: string;
+    full_name: string;
+    email: string;
+    department?: string;
+  }>;
+}
+
+export interface CompetencyRecommendation {
+  trainer_id: string;
+  full_name: string;
+  department?: string;
+  total_score: number;
+  rank_in_skill: number;
+  skill_match: number;
+  pass_rate: number;
+  rating_score: number;
+  experience_score: number;
+  declared_proficiency?: number;
+  courses_taught: number;
+  resources_uploaded: number;
+  keyword_hits: number;
+  attempts_count: number;
+  feedback_count: number;
+}
+
+export interface SkillGap {
+  skill_id: number;
+  skill: string;
+  category?: string;
+  best_trainer_score: number;
+  strong_trainers: number;
+  demand: number;
+  gap_status: "critical gap" | "weak coverage" | "covered";
+}
 
 const API_BASE = typeof window !== "undefined" ? "/api" : (process.env.INTERNAL_API_URL || "http://127.0.0.1:8000/api");
 
@@ -197,6 +377,91 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+    enroll: (courseId: string) => fetchApi<{ id: string; course_id: string; status: string; progress_pct: number }>(`/courses/${courseId}/enroll`, {
+      method: "POST",
+    }),
+    getEnrollment: (courseId: string) => fetchApi<{ enrolled: boolean; enrollment: EnrollmentRecord | null }>(`/courses/${courseId}/enrollment`),
+    getMyEnrollments: () => fetchApi<{ items: TraineeEnrollmentItem[] }>("/courses/my/enrollments"),
+    completeResource: (enrollmentId: string, resourceId: string) => fetchApi<{ id: string; progress_pct: number; completed_resources: number; mandatory_resources: number }>(`/courses/enrollments/${enrollmentId}/complete-resource?resource_id=${resourceId}`, {
+      method: "POST",
+    }),
+  },
+
+  assessments: {
+    list: (params: { course_id?: string; skill_id?: number; status?: string; page?: number; page_size?: number } = {}) => {
+      const search = new URLSearchParams();
+      if (params.course_id) search.set("course_id", params.course_id);
+      if (params.skill_id) search.set("skill_id", params.skill_id.toString());
+      if (params.status) search.set("status", params.status);
+      if (params.page) search.set("page", params.page.toString());
+      if (params.page_size) search.set("page_size", params.page_size.toString());
+      return fetchApi<{ items: Assessment[]; total: number; page: number; page_size: number }>(`/assessments?${search.toString()}`);
+    },
+    get: (id: string) => fetchApi<Assessment>(`/assessments/${id}`),
+    create: (data: any) => fetchApi<{ id: string; status: string }>("/assessments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => fetchApi<{ id: string }>(`/assessments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+    addQuestion: (assessmentId: string, questionId: string, position: number = 1, marks: number = 1) => fetchApi(`/assessments/${assessmentId}/questions?question_id=${questionId}&position=${position}&marks=${marks}`, {
+      method: "POST",
+    }),
+    removeQuestion: (assessmentId: string, questionId: string) => fetchApi(`/assessments/${assessmentId}/questions/${questionId}`, {
+      method: "DELETE",
+    }),
+    open: (id: string) => fetchApi<{ id: string; status: string }>(`/assessments/${id}/open`, {
+      method: "POST",
+    }),
+    close: (id: string) => fetchApi<{ id: string; status: string }>(`/assessments/${id}/close`, {
+      method: "POST",
+    }),
+    participation: (id: string) => fetchApi<AssessmentParticipationResponse>(`/assessments/${id}/participation`),
+    myAssessments: () => fetchApi<{ items: TraineeAssessmentItem[] }>("/me/assessments"),
+    start: (id: string) => fetchApi<AttemptStartResponse>(`/assessments/${id}/start`, {
+      method: "POST",
+    }),
+    saveAnswer: (attemptId: string, questionId: string, selectedOptionIds: string[]) => fetchApi<{ saved: boolean }>(`/attempts/${attemptId}/answers?question_id=${questionId}`, {
+      method: "PUT",
+      body: JSON.stringify({ selected_option_ids: selectedOptionIds }),
+    }),
+    sendEvent: (attemptId: string, eventType: "blur" | "fullscreen_exit" | "copy") => fetchApi<{ tab_switch_count: number; fullscreen_exits: number; copy_paste_attempts: number }>(`/attempts/${attemptId}/events`, {
+      method: "POST",
+      body: JSON.stringify({ event_type: eventType }),
+    }),
+    submit: (attemptId: string) => fetchApi<{ attempt_id: string; submitted: boolean }>(`/attempts/${attemptId}/submit`, {
+      method: "POST",
+    }),
+    getResult: (attemptId: string) => fetchApi<AttemptResultResponse>(`/attempts/${attemptId}/result`),
+  },
+
+  questions: {
+    list: (params: { skill_id?: number; status?: string; q?: string; difficulty?: number; page?: number; page_size?: number } = {}) => {
+      const search = new URLSearchParams();
+      if (params.skill_id) search.set("skill_id", params.skill_id.toString());
+      if (params.status) search.set("status", params.status);
+      if (params.q) search.set("q", params.q);
+      if (params.difficulty) search.set("difficulty", params.difficulty.toString());
+      if (params.page) search.set("page", params.page.toString());
+      if (params.page_size) search.set("page_size", params.page_size.toString());
+      return fetchApi<{ items: QuestionItem[]; total: number; page: number; page_size: number }>(`/questions?${search.toString()}`);
+    },
+    create: (data: any) => fetchApi<{ id: string; status: string }>("/questions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => fetchApi<{ id: string }>(`/questions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+    approve: (id: string) => fetchApi<{ id: string; status: string }>(`/questions/${id}/approve`, {
+      method: "POST",
+    }),
+    delete: (id: string) => fetchApi<{ ok: boolean }>(`/questions/${id}`, {
+      method: "DELETE",
+    }),
   },
 
   files: {
@@ -217,9 +482,10 @@ export const api = {
     heatmap: () => fetchApi<{ items: Array<{ department: string; skill: string; category?: string; avg_pct: number; trainees: number }> }>("/competency/heatmap"),
     refresh: () => fetchApi<{ job_id: string }>("/admin/competency/refresh", { method: "POST" }),
     job: (id: string) => fetchApi<{ status: string; result?: unknown; error?: string }>(`/jobs/${id}`),
-    mine: () => fetchApi<{ skills: Array<{ skill: string; average_pct: number; level: string; weak: boolean }>; recommended_courses: Array<{ course_id: string; title: string; weak_skill: string; avg_pct: number }> }>("/me/competency"),
+    mine: () => fetchApi<{ skills: Array<{ skill: string; average_pct: number; level: string; weak: boolean }>; weak_skills: Array<{ skill: string; average_pct: number; level: string; weak: boolean }>; recommended_courses: Array<{ course_id: string; title: string; weak_skill: string; avg_pct: number }> }>("/me/competency"),
   },
+
   dashboard: {
-    admin: () => fetchApi<{ kpis: Record<string, number>; courses: Array<{ title: string; enrollments: number; completions: number }>; assessments: Array<{ title: string; submitted: number; pass_rate_pct?: number }>; activity: Array<{ month: string; enrollments: number; attempts: number; certificates: number }> }>("/admin/dashboard"),
+    admin: () => fetchApi<{ kpis: Record<string, number>; courses: Array<{ title: string; enrollments: number; completions: number }>; assessments: Array<{ title: string; submitted: number; pass_rate_pct?: number }>; activity: Array<{ month: string; enrollments: number; attempts: number; certificates: number }>; pending_users: any[] }>("/admin/dashboard"),
   },
 };
