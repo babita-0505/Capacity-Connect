@@ -175,9 +175,9 @@ export default function AdminDashboardPage() {
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <LineChart data={activityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94A3B8" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94A3B8" angle={-35} textAnchor="end" height={50} />
                 <YAxis tick={{ fontSize: 10 }} stroke="#94A3B8" />
                 <Tooltip contentStyle={{ fontSize: "11px", borderRadius: "8px" }} />
                 <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
@@ -200,9 +200,9 @@ export default function AdminDashboardPage() {
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={courseChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={courseChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94A3B8" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94A3B8" angle={-35} textAnchor="end" height={50} />
                 <YAxis tick={{ fontSize: 10 }} stroke="#94A3B8" />
                 <Tooltip contentStyle={{ fontSize: "11px", borderRadius: "8px" }} />
                 <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
@@ -230,9 +230,9 @@ export default function AdminDashboardPage() {
 
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={assessmentChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={assessmentChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94A3B8" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94A3B8" angle={-35} textAnchor="end" height={50} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="#94A3B8" />
                 <Tooltip contentStyle={{ fontSize: "11px", borderRadius: "8px" }} />
                 <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />

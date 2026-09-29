@@ -328,22 +328,22 @@ export default function CoursePlayerPage() {
                 )}
 
                 {/* Next / Previous resource buttons */}
-                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
                   {prevResource ? (
                     <button
                       onClick={() => setActiveResource(prevResource)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-navy-900 py-1.5 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-navy-900 py-1.5 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors max-w-[45%] sm:max-w-none"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" /> Previous: {prevResource.title}
+                      <ArrowLeft className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">Previous: {prevResource.title}</span>
                     </button>
                   ) : <div />}
 
                   {nextResource ? (
                     <button
                       onClick={() => setActiveResource(nextResource)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover py-1.5 px-3 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover py-1.5 px-3 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors max-w-[45%] sm:max-w-none"
                     >
-                      Next: {nextResource.title} <ArrowRight className="h-3.5 w-3.5" />
+                      <span className="truncate">Next: {nextResource.title}</span> <ArrowRight className="h-3.5 w-3.5 flex-shrink-0" />
                     </button>
                   ) : enrollment.assessment_id ? (
                     <Link

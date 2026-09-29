@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, BookOpen, UserCheck, User as UserIcon, Home } from "lucide-react";
+import { Compass, BookOpen, UserCheck, User as UserIcon, Home, BarChart3 } from "lucide-react";
 import { User } from "@/lib/api";
 
 interface MobileNavProps {
@@ -40,10 +40,12 @@ export const MobileNav: React.FC<MobileNavProps> = ({ user }) => {
       ];
     }
 
-    // Trainee
+    // Trainee — include workspace and assessments
     return [
+      { href: "/trainee", label: "Workspace", icon: Home },
       { href: "/courses", label: "Courses", icon: Compass },
-      { href: "/assessments", label: "My Tests", icon: BookOpen },
+      { href: "/assessments", label: "Tests", icon: BookOpen },
+      { href: "/trainee/skills", label: "Skills", icon: BarChart3 },
       { href: "/profile", label: "Profile", icon: UserIcon },
     ];
   };
@@ -51,7 +53,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({ user }) => {
   const links = getLinks();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 px-2 py-1 shadow-lg">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 px-1 pt-1 shadow-lg"
+      style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))" }}
+    >
       <div className="flex items-center justify-around">
         {links.map((item) => {
           const Icon = item.icon;
@@ -60,7 +64,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ user }) => {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-colors ${
+              className={`flex flex-col items-center justify-center py-2 px-2 min-h-[44px] rounded-md transition-colors ${
                 isActive ? "text-primary font-semibold" : "text-slate-500 hover:text-slate-900"
               }`}
             >

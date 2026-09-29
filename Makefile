@@ -20,3 +20,13 @@ reset-db:
 
 logs:
 	docker compose logs -f
+
+backup:
+	@mkdir -p backups
+	docker compose exec -T db pg_dump -U postgres capacity_connect > backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "Database backup completed successfully in backups/ folder."
+
+restore:
+	@if [ -z "$(FILE)" ]; then echo "Error: specify backup file with FILE=backups/your_backup.sql"; exit 1; fi
+	docker compose exec -T db psql -U postgres -d capacity_connect < $(FILE)
+	@echo "Database restore completed from $(FILE)."

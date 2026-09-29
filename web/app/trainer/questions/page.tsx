@@ -482,7 +482,7 @@ export default function QuestionBankPage() {
                         : "bg-slate-50 border-slate-200 text-slate-700"
                     }`}
                   >
-                    <span className="truncate">{opt.text}</span>
+                    <span className="break-words">{opt.text}</span>
                     {opt.is_correct && (
                       <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
                         Correct

@@ -63,8 +63,21 @@ async def create_announcement(data: AnnouncementIn, current_user: dict = Depends
 
 @router.get("/verify/{certificate_no}")
 async def verify_certificate(certificate_no: str, db: AsyncSession = Depends(get_db)):
-    cert=(await db.execute(text("SELECT c.certificate_no,c.payload,c.signature,c.revoked_at,u.full_name,co.title,c.issued_at FROM certificates c JOIN users u ON u.id=c.user_id JOIN courses co ON co.id=c.course_id WHERE c.certificate_no=:no"),{"no":certificate_no})).mappings().first()
+    cert=(await db.execute(text("SELECT c.certificate_no,c.payload,c.signature,c.revoked_at,c.revoke_reason,u.full_name,co.title,c.issued_at FROM certificates c JOIN users u ON u.id=c.user_id JOIN courses co ON co.id=c.course_id WHERE c.certificate_no=:no"),{"no":certificate_no})).mappings().first()
     if not cert: return {"status":"Not found"}
     canonical=json.dumps(cert["payload"],sort_keys=True,separators=(",",":")); signature=hmac.new(settings.CERT_HMAC_SECRET.encode(),canonical.encode(),hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature,cert["signature"]): return {"status":"Invalid"}
-    return {"status":"Revoked" if cert["revoked_at"] else "Valid","name":cert["full_name"],"course":cert["title"],"issue_date":cert["issued_at"]}
+    return {"status":"Revoked" if cert["revoked_at"] else "Valid","name":cert["full_name"],"course":cert["title"],"issue_date":cert["issued_at"],"revocation_reason":cert["revoke_reason"] if cert["revoked_at"] else None}
+
+class RevokeIn(BaseModel):
+    reason: str
+
+@router.patch("/admin/certificates/{certificate_no}/revoke")
+async def revoke_certificate(certificate_no: str, data: RevokeIn, current_user: dict = Depends(require_role("admin")), db: AsyncSession = Depends(get_db)):
+    cert = (await db.execute(text("SELECT id, user_id FROM certificates WHERE certificate_no=:no"), {"no": certificate_no})).mappings().first()
+    if not cert:
+        raise HTTPException(404, "Certificate not found")
+    await db.execute(text("UPDATE certificates SET revoked_at=now(), revoke_reason=:reason WHERE certificate_no=:no"), {"no": certificate_no, "reason": data.reason})
+    await db.commit()
+    return {"certificate_no": certificate_no, "status": "revoked"}
+

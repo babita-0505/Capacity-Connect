@@ -406,7 +406,7 @@ export default function TrainerAssessmentsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-700">Duration (Mins)</label>
                   <input
@@ -693,7 +693,7 @@ export default function TrainerAssessmentsPage() {
                 </div>
 
                 {/* Trainee Submissions Table */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                       <tr>
